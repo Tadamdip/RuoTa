@@ -37,7 +37,9 @@ type User = {
 };
 
 export default function HomeScreen() {
-  const [screen, setScreen] = useState<"welcome" | "login" | "main">("welcome");
+  const [screen, setScreen] = useState<
+  "welcome" | "login" | "main" | "maps" | "todos" | "settings"
+>("welcome");
   const [user, setUser] = useState<User | null>(null);
 
   const [fullName, setFullName] = useState("");
@@ -138,30 +140,49 @@ export default function HomeScreen() {
     }
   }
 
+  function TopNav() {
+    return (
+      <View style={styles.topNav}>
+        <Pressable style={styles.navButton} onPress={() => setScreen("login")}>
+          <Text style={styles.navButtonText}>Login</Text>
+        </Pressable>
+
+        <Pressable style={styles.navButton} onPress={viewWithoutLogin}>
+          <Text style={styles.navButtonText}>View Mosque List</Text>
+        </Pressable>
+
+        <Pressable style={styles.navButton} onPress={() => setScreen("maps")}>
+          <Text style={styles.navButtonText}>Maps</Text>
+        </Pressable>
+
+        <Pressable style={styles.navButton} onPress={() => setScreen("todos")}>
+          <Text style={styles.navButtonText}>To Do&apos;s</Text>
+        </Pressable>
+
+        <Pressable style={styles.navButton} onPress={() => setScreen("settings")}>
+          <Text style={styles.navButtonText}>Settings</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   if (screen === "welcome") {
     return (
       <ImageBackground source={backgroundImage} style={styles.background}>
         <View style={styles.overlay}>
           <Text style={styles.welcomeTitle}>Routa</Text>
           <Text style={styles.welcomeSubtitle}>
-            Mosque Visit Recommendation System
+            Na Ska tunay LALAKAW NGA? {"\n"}
+            <Text style={styles.stayl}>1</Text>days, {" "}
+            <Text style={styles.stayl}>3</Text>days, {" "}
+            <Text style={styles.stayl}>7</Text>days, {" "}
+            <Text style={styles.stayl}>40</Text>days, {" "}
+            <Text style={styles.stayl}>4</Text>months?
           </Text>
 
-          <View style={styles.welcomeCard}>
-            <Text style={styles.cardTitle}>Welcome</Text>
-            <Text style={styles.details}>
-              Login to get a suggested mosque, or continue as guest to view the
-              mosque list.
-            </Text>
-
-            <Pressable style={styles.button} onPress={() => setScreen("login")}>
-              <Text style={styles.buttonText}>Login</Text>
-            </Pressable>
-
-            <Pressable style={styles.secondaryButton} onPress={viewWithoutLogin}>
-              <Text style={styles.secondaryButtonText}>View Mosque List</Text>
-            </Pressable>
-          </View>
+          <Pressable style={styles.proceedButton} onPress={() => setScreen("main")}>
+            <Text style={styles.proceedButtonText}>Click to proceed</Text>
+          </Pressable>
         </View>
       </ImageBackground>
     );
@@ -170,6 +191,7 @@ export default function HomeScreen() {
   if (screen === "login") {
     return (
       <ScrollView contentContainerStyle={styles.container}>
+        <TopNav />
         <Text style={styles.title}>Routa</Text>
         <Text style={styles.subtitle}>User Login</Text>
 
@@ -216,8 +238,39 @@ export default function HomeScreen() {
     );
   }
 
+  if (screen === "maps") {
+    return (
+      <ScrollView contentContainerStyle={styles.container}>
+        <TopNav />
+        <Text style={styles.title}>Maps</Text>
+        <Text style={styles.subtitle}>Map feature will be added here.</Text>
+      </ScrollView>
+    );
+  }
+
+  if (screen === "todos") {
+    return (
+      <ScrollView contentContainerStyle={styles.container}>
+        <TopNav />
+        <Text style={styles.title}>To Do&apos;s</Text>
+        <Text style={styles.subtitle}>Tasks and visit plans will be added here.</Text>
+      </ScrollView>
+    );
+  }
+
+  if (screen === "settings") {
+    return (
+      <ScrollView contentContainerStyle={styles.container}>
+        <TopNav />
+        <Text style={styles.title}>Settings</Text>
+        <Text style={styles.subtitle}>App settings will be added here.</Text>
+      </ScrollView>
+    );
+  }
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <TopNav />
       <Text style={styles.title}>Routa</Text>
       <Text style={styles.subtitle}>Main Page</Text>
 
@@ -324,17 +377,26 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(18, 55, 42, 0.58)",
   },
   welcomeTitle: {
-    fontSize: 48,
-    fontWeight: "800",
+    fontSize: 58,
+    fontWeight: "500",
+    fontFamily: "BitcountInk",
     color: "#ffffff",
     textAlign: "center",
   },
   welcomeSubtitle: {
-    fontSize: 17,
+    fontSize: 24,
+    fontFamily: "Agdasima-Regular",
     color: "#eef7f1",
     textAlign: "center",
     marginTop: 8,
     marginBottom: 32,
+  },
+  stayl: {
+    fontSize: 20,
+    color: "#efdd13",
+    fontFamily: "BitcountSingle",
+    textAlign: "center",
+    marginRight: 2,
   },
   welcomeCard: {
     backgroundColor: "rgba(255, 255, 255, 0.92)",
@@ -428,5 +490,41 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     color: "#12372a",
+  },
+
+  // {/* Top Nav Style */},
+  proceedButton: {
+    backgroundColor: "#ffffff",
+    padding: 16,
+    borderRadius: 999,
+    alignItems: "center",
+    marginTop: 32,
+  },
+
+  proceedButtonText: {
+    color: "#12372a",
+    fontSize: 17,
+    fontFamily: "Agdasima-Regular",
+  },
+
+  topNav: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 10,
+    marginBottom: 24,
+},
+
+  navButton: {
+    backgroundColor: "#12372a",
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+  },
+
+  navButtonText: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontFamily: "Agdasima-Regular",
   },
 });
