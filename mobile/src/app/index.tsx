@@ -9,6 +9,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import type { PropsWithChildren } from 'react';
 
 const backgroundImage = require("../../assets/images/mosq.jpg");
 // For using npm run web
@@ -35,6 +36,22 @@ type User = {
   representing_area: string;
   representing_mosque: string;
 };
+
+function AppBackground({ children }: PropsWithChildren) {
+  return (
+    <ImageBackground
+      source={backgroundImage}
+      style={styles.background}
+      resizeMode="cover"
+    >
+      <View style={styles.backgroundOverlay}>
+        <ScrollView contentContainerStyle={styles.pageContainer}>
+          {children}
+        </ScrollView>
+      </View>
+    </ImageBackground>
+  );
+}
 
 export default function HomeScreen() {
   const [screen, setScreen] = useState<
@@ -190,7 +207,7 @@ export default function HomeScreen() {
 
   if (screen === "login") {
     return (
-      <ScrollView contentContainerStyle={styles.container}>
+      <AppBackground>
         <TopNav />
         <Text style={styles.title}>Routa</Text>
         <Text style={styles.subtitle}>User Login</Text>
@@ -234,42 +251,42 @@ export default function HomeScreen() {
             <Text style={styles.secondaryButtonText}>Back</Text>
           </Pressable>
         </View>
-      </ScrollView>
+      </AppBackground>
     );
   }
 
   if (screen === "maps") {
     return (
-      <ScrollView contentContainerStyle={styles.container}>
+      <AppBackground>
         <TopNav />
         <Text style={styles.title}>Maps</Text>
         <Text style={styles.subtitle}>Map feature will be added here.</Text>
-      </ScrollView>
+      </AppBackground>
     );
   }
 
   if (screen === "todos") {
     return (
-      <ScrollView contentContainerStyle={styles.container}>
+      <AppBackground>
         <TopNav />
         <Text style={styles.title}>To Do&apos;s</Text>
         <Text style={styles.subtitle}>Tasks and visit plans will be added here.</Text>
-      </ScrollView>
+      </AppBackground>
     );
   }
 
   if (screen === "settings") {
     return (
-      <ScrollView contentContainerStyle={styles.container}>
+      <AppBackground>
         <TopNav />
         <Text style={styles.title}>Settings</Text>
         <Text style={styles.subtitle}>App settings will be added here.</Text>
-      </ScrollView>
+      </AppBackground>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <AppBackground>
       <TopNav />
       <Text style={styles.title}>Routa</Text>
       <Text style={styles.subtitle}>Main Page</Text>
@@ -362,13 +379,23 @@ export default function HomeScreen() {
       >
         <Text style={styles.secondaryButtonText}>Back</Text>
       </Pressable>
-    </ScrollView>
+    </AppBackground>
   );
 }
 
 const styles = StyleSheet.create({
   background: {
     flex: 1,
+  },
+  backgroundOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(18, 55, 42, 0.62)",
+  },
+
+  pageContainer: {
+    flexGrow: 1,
+    padding: 24,
+    justifyContent: "center",
   },
   overlay: {
     flex: 1,
@@ -494,17 +521,22 @@ const styles = StyleSheet.create({
 
   // {/* Top Nav Style */},
   proceedButton: {
-    backgroundColor: "#ffffff",
-    padding: 16,
+    alignSelf: "center",
+    width: 230,
+    backgroundColor: "Transparent",
+    borderWidth: 2,
+    borderColor: "#fffbfb",
+    paddingVertical: 10,
+    paddingHorizontal: 24,
     borderRadius: 999,
     alignItems: "center",
     marginTop: 32,
   },
 
   proceedButtonText: {
-    color: "#12372a",
+    color: "#e4d211",
     fontSize: 17,
-    fontFamily: "Agdasima-Regular",
+    fontFamily: "BitcountSingle",
   },
 
   topNav: {
