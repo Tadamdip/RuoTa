@@ -1,4 +1,5 @@
 ﻿import { useState } from "react";
+import type { PropsWithChildren } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -10,14 +11,16 @@ import {
   TextInput,
   View,
 } from "react-native";
-import type { PropsWithChildren } from 'react';
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 const backgroundImage = require("../../assets/images/mosq.jpg");
+
 // For using npm run web
 const API_BASE = "http://localhost/routa-api";
+
 // For using a real Android phone
 // const API_BASE = "http://192.168.1.9/routa-api";
+
 // For using Android Emulator
 // const API_BASE = "http://10.0.2.2/routa-api";
 
@@ -35,30 +38,51 @@ type Mosque = {
 
 type User = {
   user_id: number;
+  first_name?: string;
+  last_name?: string;
   full_name: string;
+  contact_number?: string;
   representing_area: string;
   representing_mosque: string;
+  role?: string;
 };
 
-type ScreenName = "welcome" | "login" | "main" | "mosques" | "maps" | "todos" | "settings" | "profile";
-
+type ScreenName =
+  | "welcome"
+  | "signup"
+  | "login"
+  | "main"
+  | "mosques"
+  | "maps"
+  | "todos"
+  | "settings"
+  | "profile";
 
 export default function HomeScreen() {
   const [screen, setScreen] = useState<ScreenName>("welcome");
   const [user, setUser] = useState<User | null>(null);
 
-  const [fullName, setFullName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [contactNumber, setContactNumber] = useState("");
   const [representingArea, setRepresentingArea] = useState("");
   const [representingMosque, setRepresentingMosque] = useState("");
 
   const [mosque, setMosque] = useState<Mosque | null>(null);
   const [mosques, setMosques] = useState<Mosque[]>([]);
+
   const [loading, setLoading] = useState(false);
   const [listLoading, setListLoading] = useState(false);
   const [error, setError] = useState("");
-
-  // Profile dropdown visibility
+  const [message, setMessage] = useState("");
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+
+  function goToScreen(nextScreen: ScreenName) {
+    setError("");
+    setMessage("");
+    setShowProfileMenu(false);
+    setScreen(nextScreen);
+  }
 
   async function loadMosques() {
     setListLoading(true);
@@ -75,61 +99,123 @@ export default function HomeScreen() {
     }
   }
 
-  async function continueWithUser() {
-    if (!fullName.trim()) {
-      setError("Please enter your full name.");
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-
-    try {
-      const response = await fetch(`${API_BASE}/users.php`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          full_name: fullName,
-          representing_area: representingArea,
-          representing_mosque: representingMosque,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error("Failed to save user.");
-      }
-
-      setUser({
-        user_id: data.user_id,
-        full_name: fullName,
-        representing_area: representingArea,
-        representing_mosque: representingMosque,
-      });
-
-      setScreen("main");
-      await loadMosques();
-    } catch {
-      setError("Could not save user information.");
-    } finally {
-      setLoading(false);
-    }
+  async function enterApp() {
+    goToScreen("main");
+    await loadMosques();
   }
 
   async function viewWithoutLogin() {
     setUser(null);
     setMosque(null);
-    setScreen("main");
+    goToScreen("mosques");
     await loadMosques();
+  }
+
+  async function handleSignup() {
+    setMessage("");
+    setError("");
+
+    if (
+      !firstName.trim() ||
+      !lastName.trim() ||
+      !contactNumber.trim() ||
+      !representingArea.trim() ||
+      !representingMosque.trim()
+    ) {
+      setMessage("Please complete all fields.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${API_BASE}/signup.php`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          contact_number: contactNumber.trim(),
+          representing_area: representingArea.trim(),
+          representing_mosque: representingMosque.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        setMessage(data.message || "Sign up failed.");
+        return;
+      }
+
+      setMessage("Sign up successful. You can now login.");
+      setScreen("login");
+    } catch {
+      setMessage("Cannot connect to signup API.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleLogin() {
+    setMessage("");
+    setError("");
+
+    if (!firstName.trim() || !lastName.trim() || !contactNumber.trim()) {
+      setMessage("Please enter your first name, last name, and contact number.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${API_BASE}/login.php`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          contact_number: contactNumber.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        setMessage(data.message || "Login failed.");
+        return;
+      }
+
+      const apiUser = data.user as User;
+
+      setUser({
+        ...apiUser,
+        full_name:
+          apiUser.full_name ||
+          `${apiUser.first_name ?? firstName} ${apiUser.last_name ?? lastName}`,
+      });
+
+      setMosque(null);
+      setMessage("");
+      setScreen("main");
+      await loadMosques();
+    } catch {
+      setMessage("Cannot connect to login API.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   function handleSignOut() {
     setUser(null);
     setMosque(null);
-    setFullName("");
+    setFirstName("");
+    setLastName("");
+    setContactNumber("");
     setRepresentingArea("");
     setRepresentingMosque("");
     setShowProfileMenu(false);
@@ -158,43 +244,44 @@ export default function HomeScreen() {
     }
   }
 
-  // ─── Header Bar (top) ─────────────────────────────────────────
   function HeaderBar() {
     return (
       <View style={styles.headerBar}>
-        <View style={styles.headerLeft}>
-          <Text style={styles.headerTitle}>🕌 Routa</Text>
-        </View>
+        <Pressable style={styles.headerLeft} onPress={enterApp}>
+          <Text style={styles.headerTitle}>Routa</Text>
+        </Pressable>
 
         <View style={styles.headerRight}>
-          {/* Login / Profile button */}
           {user ? (
             <View>
               <Pressable
                 style={styles.headerIconButton}
                 onPress={() => setShowProfileMenu(!showProfileMenu)}
               >
-              
+                <MaterialCommunityIcons
+                  name="account-circle"
+                  size={24}
+                  color="#ffffff"
+                />
                 <Text style={styles.headerIconLabel}>Profile</Text>
               </Pressable>
 
-              {/* Profile dropdown menu */}
               {showProfileMenu && (
                 <View style={styles.profileMenu}>
                   <Text style={styles.profileMenuName}>{user.full_name}</Text>
                   <Text style={styles.profileMenuDetail}>
                     {user.representing_area || "No area"}
                   </Text>
+
                   <View style={styles.profileMenuDivider} />
+
                   <Pressable
                     style={styles.profileMenuItem}
-                    onPress={() => {
-                      setShowProfileMenu(false);
-                      setScreen("profile");
-                    }}
+                    onPress={() => goToScreen("profile")}
                   >
                     <Text style={styles.profileMenuItemText}>View Profile</Text>
                   </Pressable>
+
                   <Pressable
                     style={styles.signOutButton}
                     onPress={handleSignOut}
@@ -205,25 +292,36 @@ export default function HomeScreen() {
               )}
             </View>
           ) : (
-            <Pressable
-              style={styles.headerIconButton}
-              onPress={() => {
-                setShowProfileMenu(false);
-                setScreen("login");
-              }}
-            >
-              <MaterialCommunityIcons name="account-circle" size={24} color="#ffffff" />
-              <Text style={styles.headerIconLabel}>Login</Text>
-            </Pressable>
+            <>
+              <Pressable
+                style={styles.headerIconButton}
+                onPress={() => goToScreen("signup")}
+              >
+                <MaterialCommunityIcons
+                  name="account-plus"
+                  size={24}
+                  color="#ffffff"
+                />
+                <Text style={styles.headerIconLabel}>Sign Up</Text>
+              </Pressable>
+
+              <Pressable
+                style={styles.headerIconButton}
+                onPress={() => goToScreen("login")}
+              >
+                <MaterialCommunityIcons
+                  name="login"
+                  size={24}
+                  color="#ffffff"
+                />
+                <Text style={styles.headerIconLabel}>Login</Text>
+              </Pressable>
+            </>
           )}
 
-          {/* Settings button */}
           <Pressable
             style={styles.headerIconButton}
-            onPress={() => {
-              setShowProfileMenu(false);
-              setScreen("settings");
-            }}
+            onPress={() => goToScreen("settings")}
           >
             <MaterialCommunityIcons name="cog" size={24} color="#ffffff" />
             <Text style={styles.headerIconLabel}>Settings</Text>
@@ -233,7 +331,6 @@ export default function HomeScreen() {
     );
   }
 
-  // ─── Bottom Tab Bar ────────────────────────────────────────────
   function BottomTabBar() {
     const tabs: { key: ScreenName; label: string; icon: string }[] = [
       { key: "main", label: "Home", icon: "home" },
@@ -242,26 +339,21 @@ export default function HomeScreen() {
       { key: "todos", label: "To Do's", icon: "checkbox-marked-outline" },
     ];
 
-    function isActive(tabKey: ScreenName) {
-      if (tabKey === screen) return true;
-      return false;
-    }
-
     return (
       <View style={styles.bottomTabBar}>
         {tabs.map((tab) => {
-          const active = isActive(tab.key);
+          const active = tab.key === screen;
+
           return (
             <Pressable
               key={tab.label}
               style={styles.bottomTab}
               onPress={async () => {
-                setShowProfileMenu(false);
                 if (tab.key === "mosques") {
-                  setScreen("mosques");
+                  goToScreen("mosques");
                   await loadMosques();
                 } else {
-                  setScreen(tab.key);
+                  goToScreen(tab.key);
                 }
               }}
             >
@@ -270,6 +362,7 @@ export default function HomeScreen() {
                 size={24}
                 color={active ? "#e4d211" : "rgba(255,255,255,0.55)"}
               />
+
               <Text
                 style={[
                   styles.bottomTabLabel,
@@ -278,6 +371,7 @@ export default function HomeScreen() {
               >
                 {tab.label}
               </Text>
+
               {active && <View style={styles.activeIndicator} />}
             </Pressable>
           );
@@ -286,7 +380,6 @@ export default function HomeScreen() {
     );
   }
 
-  // ─── App Shell (Header + Content + Bottom Tab) ─────────────────
   function AppShell({ children }: PropsWithChildren) {
     return (
       <ImageBackground
@@ -296,25 +389,27 @@ export default function HomeScreen() {
       >
         <View style={styles.backgroundOverlay}>
           <HeaderBar />
+
           <ScrollView contentContainerStyle={styles.pageContainer}>
             {children}
           </ScrollView>
+
           <BottomTabBar />
         </View>
       </ImageBackground>
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // SCREENS
-  // ═══════════════════════════════════════════════════════════════
-
-  // ─── Welcome Screen (full-screen, no nav) ──────────────────────
   if (screen === "welcome") {
     return (
-      <ImageBackground source={backgroundImage} style={styles.background}>
+      <ImageBackground
+        source={backgroundImage}
+        style={styles.background}
+        resizeMode="cover"
+      >
         <View style={styles.overlay}>
           <Text style={styles.welcomeTitle}>Routa</Text>
+
           <Text style={styles.welcomeSubtitle}>
             Na Ska tunay LALAKAW NGA? {"\n"}
             <Text style={styles.stayl}>1</Text>days,{" "}
@@ -324,7 +419,7 @@ export default function HomeScreen() {
             <Text style={styles.stayl}>4</Text>months?
           </Text>
 
-          <Pressable style={styles.proceedButton} onPress={() => setScreen("main")}>
+          <Pressable style={styles.proceedButton} onPress={enterApp}>
             <Text style={styles.proceedButtonText}>Click to proceed</Text>
           </Pressable>
         </View>
@@ -332,64 +427,126 @@ export default function HomeScreen() {
     );
   }
 
-    // ─── Login Screen ─────────────────────────────────────────────
-    if (screen === "login") {
-      return (
-        <ImageBackground source={backgroundImage} style={styles.background} resizeMode="cover">
-          <View style={styles.backgroundOverlay}>
-            <HeaderBar />
-            <ScrollView contentContainerStyle={styles.pageContainer}>
-              <Text style={styles.title}>Routa</Text>
-              <Text style={styles.subtitle}>User Login</Text>
+  if (screen === "signup") {
+    return (
+      <AppShell>
+        <Text style={styles.title}>Sign Up</Text>
+        <Text style={styles.subtitle}>Create your Routa account</Text>
 
-              <View style={styles.card}>
-                <Text style={styles.cardTitle}>User Information</Text>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>User Information</Text>
 
-                <TextInput
-                  style={styles.input}
-                  placeholder="Last Name, First Name"
-                  value={fullName}
-                  onChangeText={setFullName}
-                />
+          <TextInput
+            style={styles.input}
+            placeholder="First Name"
+            value={firstName}
+            onChangeText={setFirstName}
+          />
 
-                <TextInput
-                  style={styles.input}
-                  placeholder="Representing area"
-                  value={representingArea}
-                  onChangeText={setRepresentingArea}
-                />
+          <TextInput
+            style={styles.input}
+            placeholder="Last Name"
+            value={lastName}
+            onChangeText={setLastName}
+          />
 
-                <TextInput
-                  style={styles.input}
-                  placeholder="Representing mosque name or ID"
-                  value={representingMosque}
-                  onChangeText={setRepresentingMosque}
-                />
+          <TextInput
+            style={styles.input}
+            placeholder="Contact Number"
+            value={contactNumber}
+            onChangeText={setContactNumber}
+            keyboardType="phone-pad"
+          />
 
-                {error ? <Text style={styles.error}>{error}</Text> : null}
+          <TextInput
+            style={styles.input}
+            placeholder="Representing Area"
+            value={representingArea}
+            onChangeText={setRepresentingArea}
+          />
 
-                <Pressable style={styles.button} onPress={continueWithUser}>
-                  <Text style={styles.buttonText}>
-                    {loading ? "Saving..." : "Continue"}
-                  </Text>
-                </Pressable>
+          <TextInput
+            style={styles.input}
+            placeholder="Representing Mosque"
+            value={representingMosque}
+            onChangeText={setRepresentingMosque}
+          />
 
-                <Pressable
-                  style={styles.secondaryButton}
-                  onPress={() => setScreen("welcome")}
-                >
-                  <Text style={styles.secondaryButtonText}>Back</Text>
-                </Pressable>
-              </View>
-            </ScrollView>
-            <BottomTabBar />
-          </View>
-        </ImageBackground>
-      );
-    }
+          {message ? <Text style={styles.message}>{message}</Text> : null}
 
+          <Pressable style={styles.button} onPress={handleSignup}>
+            <Text style={styles.buttonText}>
+              {loading ? "Creating..." : "Create Account"}
+            </Text>
+          </Pressable>
 
-  // ─── Profile Screen ───────────────────────────────────────────
+          <Pressable
+            style={styles.secondaryButton}
+            onPress={() => goToScreen("login")}
+          >
+            <Text style={styles.secondaryButtonText}>
+              Already have an account? Login
+            </Text>
+          </Pressable>
+        </View>
+      </AppShell>
+    );
+  }
+
+  if (screen === "login") {
+    return (
+      <AppShell>
+        <Text style={styles.title}>Login</Text>
+        <Text style={styles.subtitle}>Enter your registered information</Text>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Login Information</Text>
+
+          <TextInput
+            style={styles.input}
+            placeholder="First Name"
+            value={firstName}
+            onChangeText={setFirstName}
+          />
+
+          <TextInput
+            style={styles.input}
+            placeholder="Last Name"
+            value={lastName}
+            onChangeText={setLastName}
+          />
+
+          <TextInput
+            style={styles.input}
+            placeholder="Contact Number"
+            value={contactNumber}
+            onChangeText={setContactNumber}
+            keyboardType="phone-pad"
+          />
+
+          {message ? <Text style={styles.message}>{message}</Text> : null}
+
+          <Pressable style={styles.button} onPress={handleLogin}>
+            <Text style={styles.buttonText}>
+              {loading ? "Logging in..." : "Login"}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            style={styles.secondaryButton}
+            onPress={() => goToScreen("signup")}
+          >
+            <Text style={styles.secondaryButtonText}>Create New Account</Text>
+          </Pressable>
+
+          <Pressable style={styles.secondaryButton} onPress={viewWithoutLogin}>
+            <Text style={styles.secondaryButtonText}>View Mosque List</Text>
+          </Pressable>
+        </View>
+      </AppShell>
+    );
+  }
+
   if (screen === "profile") {
     return (
       <AppShell>
@@ -407,6 +564,13 @@ export default function HomeScreen() {
             </View>
 
             <Text style={styles.profileName}>{user.full_name}</Text>
+
+            <View style={styles.profileInfoRow}>
+              <Text style={styles.profileInfoLabel}>Contact</Text>
+              <Text style={styles.profileInfoValue}>
+                {user.contact_number || "Not provided"}
+              </Text>
+            </View>
 
             <View style={styles.profileInfoRow}>
               <Text style={styles.profileInfoLabel}>Area</Text>
@@ -429,10 +593,8 @@ export default function HomeScreen() {
         ) : (
           <View style={styles.card}>
             <Text style={styles.details}>You are not logged in.</Text>
-            <Pressable
-              style={styles.button}
-              onPress={() => setScreen("login")}
-            >
+
+            <Pressable style={styles.button} onPress={() => goToScreen("login")}>
               <Text style={styles.buttonText}>Go to Login</Text>
             </Pressable>
           </View>
@@ -441,7 +603,6 @@ export default function HomeScreen() {
     );
   }
 
-  // ─── Maps Screen ──────────────────────────────────────────────
   if (screen === "maps") {
     return (
       <AppShell>
@@ -451,17 +612,17 @@ export default function HomeScreen() {
     );
   }
 
-  // ─── To Do's Screen ───────────────────────────────────────────
   if (screen === "todos") {
     return (
       <AppShell>
-        <Text style={styles.title}>To Do&apos;s</Text>
-        <Text style={styles.subtitle}>Tasks and visit plans will be added here.</Text>
+        <Text style={styles.title}>To Do's</Text>
+        <Text style={styles.subtitle}>
+          Tasks and visit plans will be added here.
+        </Text>
       </AppShell>
     );
   }
 
-  // ─── Settings Screen ──────────────────────────────────────────
   if (screen === "settings") {
     return (
       <AppShell>
@@ -471,124 +632,36 @@ export default function HomeScreen() {
     );
   }
 
-    // ─── Mosques Screen ───────────────────────────────────────────
-    if (screen === "mosques") {
-      return (
-        <AppShell>
-          <Text style={styles.title}>Mosques</Text>
-          <Text style={styles.subtitle}>All Mosques</Text>
-
-          <View style={styles.card}>
-            {listLoading ? (
-              <ActivityIndicator />
-            ) : mosques.length > 0 ? (
-              mosques.map((item) => (
-                <View key={item.mosque_id} style={styles.listItem}>
-                  {item.image_url ? (
-                    <Image source={{ uri: item.image_url }} style={styles.mosqueImage} />
-                  ) : (
-                    <Image source={require("../../assets/images/mosq.jpg")} style={styles.mosqueImage} />
-                  )}
-                  <Text style={styles.listItemTitle}>{item.mosque_name}</Text>
-                  <Text style={styles.details}>Area: {item.area ?? "Not set"}</Text>
-                  <Text style={styles.details}>
-                    Religious people: {item.number_of_religous_people}
-                  </Text>
-                  <Text style={styles.details}>
-                    Priority: {item.priority_level}
-                  </Text>
-                </View>
-              ))
-            ) : (
-              <Text style={styles.details}>No mosques found.</Text>
-            )}
-          </View>
-        </AppShell>
-      );
-    }
-
-    // ─── Main / Home Screen ───────────────────────────────────────
-    
-    // Filter for mosques with priority >= 3 to show as recommended
-    const recommendedMosques = mosques.filter(m => (m.priority_level || 0) >= 3);
-
+  if (screen === "mosques") {
     return (
       <AppShell>
-        <Text style={styles.title}>Routa</Text>
-        <Text style={styles.subtitle}>Main Page</Text>
-
-        {user ? (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Logged User</Text>
-            <Text style={styles.details}>Name: {user.full_name}</Text>
-            <Text style={styles.details}>
-              Area: {user.representing_area || "Not provided"}
-            </Text>
-            <Text style={styles.details}>
-              Mosque: {user.representing_mosque || "Not provided"}
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Guest View</Text>
-            <Text style={styles.details}>
-              You are exploring the app as a guest.
-            </Text>
-          </View>
-        )}
-
-        {user ? (
-          <>
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Your Personalized Mosque</Text>
-
-              {loading ? (
-                <ActivityIndicator />
-              ) : mosque ? (
-                <>
-                  <Text style={styles.mosqueName}>{mosque.mosque_name}</Text>
-                  <Text style={styles.details}>Area: {mosque.area}</Text>
-                  <Text style={styles.details}>
-                    Religious people: {mosque.number_of_religous_people}
-                  </Text>
-                  <Text style={styles.details}>
-                    Last visited: {mosque.last_visited ?? "Never visited"}
-                  </Text>
-                  <Text style={styles.details}>
-                    Days not visited: {mosque.days_not_visited}
-                  </Text>
-                </>
-              ) : (
-                <>
-                  <Text style={styles.mosqueName}>No recommendation loaded yet</Text>
-                  <Text style={styles.details}>
-                    Tap the button to find the best mosque for you.
-                  </Text>
-                </>
-              )}
-
-              {error ? <Text style={styles.error}>{error}</Text> : null}
-            </View>
-
-            <Pressable style={styles.button} onPress={findBestMosque}>
-              <Text style={styles.buttonText}>Find Best Mosque</Text>
-            </Pressable>
-          </>
-        ) : null}
+        <Text style={styles.title}>Mosques</Text>
+        <Text style={styles.subtitle}>All Mosques</Text>
 
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Recommended Mosques (High Priority)</Text>
+          <Pressable style={styles.button} onPress={loadMosques}>
+            <Text style={styles.buttonText}>Refresh List</Text>
+          </Pressable>
+
+          {error ? <Text style={styles.error}>{error}</Text> : null}
 
           {listLoading ? (
             <ActivityIndicator />
-          ) : recommendedMosques.length > 0 ? (
-            recommendedMosques.map((item) => (
+          ) : mosques.length > 0 ? (
+            mosques.map((item) => (
               <View key={item.mosque_id} style={styles.listItem}>
                 {item.image_url ? (
-                  <Image source={{ uri: item.image_url }} style={styles.mosqueImage} />
+                  <Image
+                    source={{ uri: item.image_url }}
+                    style={styles.mosqueImage}
+                  />
                 ) : (
-                  <Image source={require("../../assets/images/mosq.jpg")} style={styles.mosqueImage} />
+                  <Image
+                    source={require("../../assets/images/mosq.jpg")}
+                    style={styles.mosqueImage}
+                  />
                 )}
+
                 <Text style={styles.listItemTitle}>{item.mosque_name}</Text>
                 <Text style={styles.details}>Area: {item.area ?? "Not set"}</Text>
                 <Text style={styles.details}>
@@ -600,71 +673,181 @@ export default function HomeScreen() {
               </View>
             ))
           ) : (
-            <Text style={styles.details}>No recommended mosques found.</Text>
+            <Text style={styles.details}>No mosques found.</Text>
           )}
         </View>
       </AppShell>
     );
-}
+  }
 
-// ═══════════════════════════════════════════════════════════════
-// STYLES
-// ═══════════════════════════════════════════════════════════════
+  const recommendedMosques = mosques.filter(
+    (item) => (item.priority_level || 0) >= 3
+  );
+
+  return (
+    <AppShell>
+      <Text style={styles.title}>Routa</Text>
+      <Text style={styles.subtitle}>Main Page</Text>
+
+      {user ? (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Logged User</Text>
+          <Text style={styles.details}>Name: {user.full_name}</Text>
+          <Text style={styles.details}>
+            Contact: {user.contact_number || "Not provided"}
+          </Text>
+          <Text style={styles.details}>
+            Area: {user.representing_area || "Not provided"}
+          </Text>
+          <Text style={styles.details}>
+            Mosque: {user.representing_mosque || "Not provided"}
+          </Text>
+        </View>
+      ) : (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Guest View</Text>
+          <Text style={styles.details}>You are exploring the app as a guest.</Text>
+
+          <Pressable style={styles.button} onPress={() => goToScreen("login")}>
+            <Text style={styles.buttonText}>Login to Get Suggestion</Text>
+          </Pressable>
+
+          <Pressable style={styles.secondaryButton} onPress={viewWithoutLogin}>
+            <Text style={styles.secondaryButtonText}>View Mosque List</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {user ? (
+        <>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Your Personalized Mosque</Text>
+
+            {loading ? (
+              <ActivityIndicator />
+            ) : mosque ? (
+              <>
+                <Text style={styles.mosqueName}>{mosque.mosque_name}</Text>
+                <Text style={styles.details}>Area: {mosque.area}</Text>
+                <Text style={styles.details}>
+                  Religious people: {mosque.number_of_religous_people}
+                </Text>
+                <Text style={styles.details}>
+                  Last visited: {mosque.last_visited ?? "Never visited"}
+                </Text>
+                <Text style={styles.details}>
+                  Days not visited: {mosque.days_not_visited}
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.mosqueName}>
+                  No recommendation loaded yet
+                </Text>
+                <Text style={styles.details}>
+                  Tap the button to find the best mosque for you.
+                </Text>
+              </>
+            )}
+
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+          </View>
+
+          <Pressable style={styles.button} onPress={findBestMosque}>
+            <Text style={styles.buttonText}>Find Best Mosque</Text>
+          </Pressable>
+        </>
+      ) : null}
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Recommended Mosques</Text>
+
+        {listLoading ? (
+          <ActivityIndicator />
+        ) : recommendedMosques.length > 0 ? (
+          recommendedMosques.map((item) => (
+            <View key={item.mosque_id} style={styles.listItem}>
+              {item.image_url ? (
+                <Image
+                  source={{ uri: item.image_url }}
+                  style={styles.mosqueImage}
+                />
+              ) : (
+                <Image
+                  source={require("../../assets/images/mosq.jpg")}
+                  style={styles.mosqueImage}
+                />
+              )}
+
+              <Text style={styles.listItemTitle}>{item.mosque_name}</Text>
+              <Text style={styles.details}>Area: {item.area ?? "Not set"}</Text>
+              <Text style={styles.details}>
+                Religious people: {item.number_of_religous_people}
+              </Text>
+              <Text style={styles.details}>Priority: {item.priority_level}</Text>
+            </View>
+          ))
+        ) : (
+          <Text style={styles.details}>No recommended mosques found.</Text>
+        )}
+      </View>
+    </AppShell>
+  );
+}
 
 const styles = StyleSheet.create({
   background: {
     flex: 1,
   },
+
   backgroundOverlay: {
     flex: 1,
     backgroundColor: "rgba(18, 55, 42, 0.62)",
   },
 
-  // ─── Header Bar ────────────────────────────────────────────
   headerBar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingTop: 22, // status bar clearance
+    paddingTop: 22,
     paddingBottom: 12,
     backgroundColor: "rgba(10, 35, 25, 0.7)",
     borderBottomWidth: 1,
     borderBottomColor: "rgba(255,255,255,0.08)",
+    zIndex: 10,
   },
+
   headerLeft: {
     flexDirection: "row",
     alignItems: "center",
   },
+
   headerTitle: {
     fontSize: 22,
     fontWeight: "700",
     color: "#ffffff",
-    letterSpacing: 0.5,
   },
+
   headerRight: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 6,
   },
+
   headerIconButton: {
     alignItems: "center",
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 4,
   },
-  headerIcon: {
-    width: 22,
-    height: 22,
-    tintColor: "#ffffff",
-  },
+
   headerIconLabel: {
-    color: "rgba(255,255,255,0.7)",
+    color: "rgba(255,255,255,0.78)",
     fontSize: 10,
     marginTop: 3,
     fontFamily: "Agdasima-Regular",
   },
 
-  // ─── Profile Dropdown Menu ─────────────────────────────────
   profileMenu: {
     position: "absolute",
     top: 50,
@@ -681,49 +864,56 @@ const styles = StyleSheet.create({
     elevation: 8,
     zIndex: 999,
   },
+
   profileMenuName: {
     fontSize: 16,
     fontWeight: "700",
     color: "#12372a",
     marginBottom: 2,
   },
+
   profileMenuDetail: {
     fontSize: 13,
     color: "#888",
     marginBottom: 8,
   },
+
   profileMenuDivider: {
     height: 1,
     backgroundColor: "#eee",
     marginVertical: 8,
   },
+
   profileMenuItem: {
     paddingVertical: 8,
   },
+
   profileMenuItemText: {
     fontSize: 14,
     color: "#12372a",
     fontWeight: "600",
   },
+
   signOutButton: {
     paddingVertical: 8,
     marginTop: 4,
   },
+
   signOutButtonText: {
     fontSize: 14,
     color: "#b00020",
     fontWeight: "600",
   },
 
-  // ─── Bottom Tab Bar ────────────────────────────────────────
   bottomTabBar: {
     flexDirection: "row",
     backgroundColor: "rgba(10, 35, 25, 0.67)",
     borderTopWidth: 1,
     borderTopColor: "rgba(255,255,255,0.08)",
-    paddingBottom: 10, // safe area for phones with gesture bar
+    paddingBottom: 10,
     paddingTop: 8,
   },
+
   bottomTab: {
     flex: 1,
     alignItems: "center",
@@ -731,16 +921,12 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     position: "relative",
   },
-  bottomTabIcon: {
-    width: 24,
-    height: 24,
-    marginBottom: 3,
-  },
+
   bottomTabLabel: {
     fontSize: 11,
     fontFamily: "Agdasima-Regular",
-    letterSpacing: 0.3,
   },
+
   activeIndicator: {
     position: "absolute",
     top: 0,
@@ -751,20 +937,19 @@ const styles = StyleSheet.create({
     backgroundColor: "#e4d211",
   },
 
-  // ─── Page Container ────────────────────────────────────────
   pageContainer: {
     flexGrow: 1,
     padding: 24,
     paddingBottom: 12,
   },
 
-  // ─── Welcome Screen ────────────────────────────────────────
   overlay: {
     flex: 1,
     padding: 24,
     justifyContent: "center",
     backgroundColor: "rgba(18, 55, 42, 0.58)",
   },
+
   welcomeTitle: {
     fontSize: 58,
     fontWeight: "500",
@@ -772,6 +957,7 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     textAlign: "center",
   },
+
   welcomeSubtitle: {
     fontSize: 24,
     fontFamily: "Agdasima-Regular",
@@ -780,6 +966,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 32,
   },
+
   stayl: {
     fontSize: 20,
     color: "#efdd13",
@@ -787,10 +974,11 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginRight: 2,
   },
+
   proceedButton: {
     alignSelf: "center",
     width: 230,
-    backgroundColor: "Transparent",
+    backgroundColor: "transparent",
     borderWidth: 2,
     borderColor: "#fffbfb",
     paddingVertical: 10,
@@ -799,30 +987,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 32,
   },
+
   proceedButtonText: {
     color: "#e4d211",
     fontSize: 17,
     fontFamily: "BitcountSingle",
   },
 
-  // ─── Common ────────────────────────────────────────────────
-  welcomeCard: {
-    backgroundColor: "rgba(255, 255, 255, 0.92)",
-    padding: 20,
-    borderRadius: 12,
-  },
-  container: {
-    flexGrow: 1,
-    padding: 24,
-    justifyContent: "center",
-    backgroundColor: "#f4f7f5",
-  },
   title: {
     fontSize: 42,
     fontWeight: "700",
-    color: "#12372a",
+    color: "#ffffff",
     textAlign: "center",
   },
+
   subtitle: {
     fontSize: 16,
     color: "#c8e7d3",
@@ -830,26 +1008,31 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 32,
   },
+
   card: {
     backgroundColor: "#ffffff",
     padding: 20,
     borderRadius: 12,
     marginBottom: 20,
   },
+
   cardTitle: {
     fontSize: 16,
     color: "#666",
     marginBottom: 12,
   },
+
   mosqueName: {
     fontSize: 22,
     fontWeight: "700",
     color: "#12372a",
   },
+
   details: {
     marginTop: 8,
     color: "#666",
   },
+
   input: {
     borderWidth: 1,
     borderColor: "#d7dfd8",
@@ -859,10 +1042,20 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     fontSize: 16,
   },
+
+  message: {
+    marginTop: 6,
+    marginBottom: 8,
+    color: "#12372a",
+    fontWeight: "700",
+    textAlign: "center",
+  },
+
   error: {
     marginTop: 12,
     color: "#b00020",
   },
+
   button: {
     backgroundColor: "#12372a",
     padding: 16,
@@ -870,11 +1063,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 8,
   },
+
   buttonText: {
     color: "#ffffff",
     fontSize: 16,
     fontWeight: "700",
   },
+
   secondaryButton: {
     borderWidth: 1,
     borderColor: "#000000",
@@ -883,22 +1078,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 12,
   },
+
   secondaryButtonText: {
     color: "#000000",
     fontSize: 16,
     fontWeight: "700",
   },
+
   listItem: {
     borderTopWidth: 1,
     borderTopColor: "#eef2ef",
     paddingTop: 12,
     marginTop: 12,
   },
+
   listItemTitle: {
     fontSize: 18,
     fontWeight: "700",
     color: "#12372a",
   },
+
   mosqueImage: {
     width: "100%",
     height: 150,
@@ -907,11 +1106,11 @@ const styles = StyleSheet.create({
     resizeMode: "cover",
   },
 
-  // ─── Profile Screen ────────────────────────────────────────
   profileAvatarContainer: {
     alignItems: "center",
     marginBottom: 16,
   },
+
   profileAvatar: {
     width: 72,
     height: 72,
@@ -920,11 +1119,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+
   profileAvatarText: {
     fontSize: 32,
     fontWeight: "700",
     color: "#e4d211",
   },
+
   profileName: {
     fontSize: 22,
     fontWeight: "700",
@@ -932,6 +1133,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 20,
   },
+
   profileInfoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -939,16 +1141,19 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#eef2ef",
   },
+
   profileInfoLabel: {
     fontSize: 14,
     color: "#888",
     fontWeight: "600",
   },
+
   profileInfoValue: {
     fontSize: 14,
     color: "#12372a",
     fontWeight: "600",
   },
+
   signOutFullButton: {
     backgroundColor: "#b00020",
     padding: 14,
@@ -956,10 +1161,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 24,
   },
+
   signOutFullButtonText: {
     color: "#ffffff",
     fontSize: 16,
     fontWeight: "700",
   },
 });
-
